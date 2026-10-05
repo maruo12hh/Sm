@@ -1,136 +1,124 @@
+const { createCanvas } = require("canvas");
 const fs = require("fs");
-const path = require("path");
-const Canvas = require("canvas");
 const os = require("os");
+const path = require("path");
 
 module.exports = {
   config: {
-    name: "up",
-    aliases: ["uptime"],
-    version: "0.0.7",
-    author: "Anik Islam Sadik",
-    countDown: 3,
+    name: "up", " uptime",
+    version: "3.3",
+    author: "Maruf",
     role: 0,
-    shortDescription: "bot stats image",
-    longDescription: "Uptime, ping, CPU load, owner info with canvas image",
-    category: "image",
-    guide: "{p}up"
+    shortDescription: { en: "Cyberpunk gamer uptime card" },
+    longDescription: {
+      en: "Sends uptime and system info as a neon cyberpunk-style card image."
+    },
+    category: "system",
+    guide: { en: "{p}up2" }
   },
 
-  onStart: async function ({ event, message, api }) {
+  onStart: async function ({ api, event }) {
     try {
       const uptime = process.uptime();
-      const hours = Math.floor(uptime / 3600);
+      const days = Math.floor(uptime / 86400);
+      const hours = Math.floor((uptime % 86400) / 3600);
       const minutes = Math.floor((uptime % 3600) / 60);
       const seconds = Math.floor(uptime % 60);
-      const uptimeStr = `${hours}h ${minutes}m ${seconds}s`;
+      const uptimeFormatted = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-      const ping = Date.now() - event.timestamp;
-      const cpuUsage = os.loadavg()[0].toFixed(2);
-      const owner = "ꫝɴ֟፝ɪᴋ ɪsʟꫝᴍ ѕꫝᴅɪᴋ";
+      const memoryUsage = (process.memoryUsage().rss / 1024 / 1024).toFixed(2);
+      const now = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Dhaka",
+        hour12: true
+      });
+      const [date, time] = now.split(", ");
 
-      const canvas = Canvas.createCanvas(1000, 500);
+      // Canvas size
+      const width = 900;
+      const height = 600;
+      const canvas = createCanvas(width, height);
       const ctx = canvas.getContext("2d");
-      const bgUrl = "https://i.imgur.com/0kEWVsr.jpeg";
-      const bgImg = await Canvas.loadImage(bgUrl);
 
-      ctx.drawImage(
-        bgImg,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      const gradient = ctx.createLinearGradient(
-        0,
-        0,
-        0,
-        canvas.height
-      );
-
-      gradient.addColorStop(0, "rgba(0,0,0,0.25)");
-      gradient.addColorStop(1, "rgba(0,0,0,0.5)");
-
+      // Futuristic neon background
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, "#0f0c29");
+      gradient.addColorStop(0.5, "#302b63");
+      gradient.addColorStop(1, "#24243e");
       ctx.fillStyle = gradient;
-      ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
+      ctx.fillRect(0, 0, width, height);
 
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowOffsetX = 3;
-      ctx.shadowOffsetY = 3;
-      ctx.shadowBlur = 8;
+      // Neon glowing card
+      const cardX = 60;
+      const cardY = 70;
+      const cardW = width - 120;
+      const cardH = height - 160;
+      ctx.fillStyle = "rgba(10, 10, 20, 0.75)";
+      ctx.strokeStyle = "#00fff7";
+      ctx.lineWidth = 5;
+      ctx.shadowColor = "#00fff7";
+      ctx.shadowBlur = 25;
+      ctx.beginPath();
+      ctx.roundRect(cardX, cardY, cardW, cardH, 25);
+      ctx.fill();
+      ctx.stroke();
 
-      const leftMargin = 40;
-      let startY = 120;
+      // Title with neon pink + techno font
+      ctx.font = "bold 42px Impact, Orbitron, sans-serif";
+      ctx.fillStyle = "#ff2fd0";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "#ff2fd0";
+      ctx.shadowBlur = 20;
+      ctx.fillText("⚡ BOT UPTIME STATS ⚡", width / 2, 130);
 
-      ctx.fillStyle = "#FFD700";
-      ctx.font = "bold 60px Sans";
-      ctx.fillText(
-        "BOT STATUS",
-        leftMargin,
-        startY
-      );
+      // Info lines with cyan glow + monospace font
+      ctx.font = "26px Consolas, Lucida Console, monospace";
+      ctx.fillStyle = "#00fff7";
+      ctx.shadowColor = "#00fff7";
+      ctx.shadowBlur = 15;
 
-      const infoTexts = [
-        `Uptime: ${uptimeStr}`,
-        `Ping: ${ping} ms`,
-        `CPU Load: ${cpuUsage}`,
-        `Owner: Anik Islam Sadik`
+      const lines = [
+        `🕰️ Uptime: ${uptimeFormatted}`,
+        `🕓 Time: ${time}`,
+        `📆 Date: ${date}`,
+        `💾 RAM Usage: ${memoryUsage} MB`,
+        `🖥️ OS: ${os.platform()} (${os.arch()})`,
+        `🛠️ Node: ${process.version}`
       ];
-      ctx.fillStyle = "#F0F0F0";
-      ctx.font = "bold 40px Sans";
 
-      startY += 80;
+      let y = 200;
+      for (const line of lines) {
+        ctx.fillText(line, width / 2, y);
+        y += 55;
+      }
 
-      const spacing = 70;
+      // Signature with stylish font
+      ctx.font = "bold 24px 'Brush Script MT', 'Comic Sans MS', cursive";
+      ctx.fillStyle = "#ff00ff";
+      ctx.textAlign = "right";
+      ctx.shadowColor = "#ff00ff";
+      ctx.shadowBlur = 25;
+      ctx.fillText("© Maruf", width - 80, height - 40);
 
-      infoTexts.forEach(text => {
-        ctx.fillText(
-          text,
-          leftMargin,
-          startY
+      // Save + send
+      const outPath = path.join(__dirname, "uptime-cyberpunk.png");
+      const out = fs.createWriteStream(outPath);
+      const stream = canvas.createPNGStream();
+      stream.pipe(out);
+
+      out.on("finish", () => {
+        api.sendMessage(
+          {
+            body: "⚡𝙷𝚒 𝙼𝚒'𝚜 𝚄𝚙𝚝𝚒𝚖𝚎 𝚒𝚗𝚏𝚘:",
+            attachment: fs.createReadStream(outPath)
+          },
+          event.threadID,
+          () => fs.unlinkSync(outPath)
         );
-        startY += spacing;
       });
-
-      const filePath = path.join(__dirname, "up3.png");
-
-      fs.writeFileSync(
-        filePath,
-        canvas.toBuffer("image/png")
-      );
-
-      const bodyText = `
-✿•≫────•『ALYA BOT』•────≪•✿
-⏳ Uptime: ${uptimeStr}
-📶 Ping: ${ping} ms
-🖥 CPU Load: ${cpuUsage}
-👑 Owner: ${owner}
-✿•≫───────────────≪•✿
-`;
-
-      await message.reply({
-        body: bodyText,
-        attachment: fs.createReadStream(filePath)
-      });
-
-      api.setMessageReaction(
-        "✅",
-        event.messageID,
-        () => {},
-        true
-      );
-
-      fs.unlinkSync(filePath);
 
     } catch (err) {
-      console.error(err);
-      return message.reply("❌ Could not fetch");
+      console.error("Uptime card error:", err.message);
+      api.sendMessage("❌ Could not generate uptime card.", event.threadID);
     }
   }
 };
